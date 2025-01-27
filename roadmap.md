@@ -7,22 +7,23 @@
 - [x] Configuration des variables d'environnement
 
 ## Phase 2 : Gestion des Utilisateurs (Semaine 2)
-- [ ] Création de la table utilisateurs
-- [ ] Mise en place de l'authentification JWT
-- [ ] Endpoints de gestion des utilisateurs :
-  - [ ] Inscription
-  - [ ] Connexion
-  - [ ] Modification du profil
-  - [ ] Réinitialisation du mot de passe
-- [ ] Middleware d'authentification
-- [ ] Tests des endpoints utilisateurs
+- [x] Création de la table utilisateurs
+- [x] Mise en place de l'authentification JWT
+- [x] Création des roles utilisateurs
+- [x] Endpoints de gestion des utilisateurs :
+  - [x] Inscription
+  - [x] Connexion
+  - [x] Modification du profil
+  - [x] Réinitialisation du mot de passe
+- [x] Middleware d'authentification
+- [x] Tests des endpoints utilisateurs
 
 ## Phase 3 : Gestion des Produits (Semaine 3)
-- [ ] Création des routes CRUD pour les produits
-- [ ] Validation des données produits
-- [ ] Gestion des stocks et alertes
-- [ ] Tests des endpoints produits
-- [ ] Documentation des endpoints produits
+- [x] Création des routes CRUD pour les produits
+- [x] Validation des données produits
+- [x] Gestion des stocks et alertes
+- [x] Tests des endpoints produits
+- [x] Documentation des endpoints produits
 
 ## Phase 4 : Gestion des Repas (Semaine 4)
 - [ ] Création des routes CRUD pour les repas

@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pigeon-nutrition-api-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=pigeon_nutrition_prod
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - pigeon-network-prod
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: pigeon-nutrition-db-prod
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    networks:
+      - pigeon-network-prod
+    restart: unless-stopped
+
+volumes:
+  postgres_data_prod:
+
+networks:
+  pigeon-network-prod:
+    driver: bridge 

@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: pigeon-nutrition-api-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=pigeon_nutrition_dev
+      - DB_USER=pigeon_user
+      - DB_PASSWORD=pigeon_password
+      - POSTGRES_PASSWORD=postgres_root_password
+      - JWT_SECRET=your_jwt_secret_dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - pigeon-network-dev
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: pigeon-nutrition-db-dev
+    environment:
+      - POSTGRES_PASSWORD=postgres_root_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - pigeon-network-dev
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pigeon-nutrition-pgadmin-dev
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - pigeon-network-dev
+
+volumes:
+  postgres_data_dev:
+
+networks:
+  pigeon-network-dev:
+    driver: bridge 

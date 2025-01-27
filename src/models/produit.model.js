@@ -1,158 +1,138 @@
-const db = require('../config/database');
-const bcrypt = require('bcrypt');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 class ProduitModel {
     static async creer(produitData) {
-        const { 
-            utilisateur_id, nom, code_barre, calories, 
-            matieres_grasses, glucides, proteines, sel,
-            stock, unite_stock, prix_unitaire, stock_limite,
-            poids_par_tranche 
-        } = produitData;
-
-        const query = `
-            INSERT INTO produits (
-                utilisateur_id, nom, code_barre, calories, 
-                matieres_grasses, glucides, proteines, sel,
-                stock, unite_stock, prix_unitaire, stock_limite,
-                poids_par_tranche
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-            RETURNING *
-        `;
-
-        const values = [
-            utilisateur_id, nom, code_barre, calories,
-            matieres_grasses, glucides, proteines, sel,
-            stock, unite_stock, prix_unitaire, stock_limite,
-            unite_stock === 'TRANCHE' ? poids_par_tranche : null
-        ];
-
-        const { rows } = await db.query(query, values);
-        return rows[0];
-    }
-
-    static async trouverParId(id, utilisateur_id) {
-        const query = 'SELECT * FROM produits WHERE id = $1 AND utilisateur_id = $2';
-        const { rows } = await db.query(query, [id, utilisateur_id]);
-        return rows[0];
-    }
-
-    static async trouverParCodeBarre(code_barre, utilisateur_id) {
-        const query = 'SELECT * FROM produits WHERE code_barre = $1 AND utilisateur_id = $2';
-        const { rows } = await db.query(query, [code_barre, utilisateur_id]);
-        return rows[0];
-    }
-
-    static async lister(utilisateur_id, options = {}) {
-        const { recherche, limite = 10, page = 1 } = options;
-        const offset = (page - 1) * limite;
+        const { utilisateur_id, ...reste } = produitData;
         
-        let query = 'SELECT * FROM produits WHERE utilisateur_id = $1';
-        const values = [utilisateur_id];
-        
-        if (recherche) {
-            query += ' AND (nom ILIKE $2 OR code_barre ILIKE $2)';
-            values.push(`%${recherche}%`);
-        }
-        
-        query += ' ORDER BY date_creation DESC LIMIT $' + (values.length + 1) + ' OFFSET $' + (values.length + 2);
-        values.push(limite, offset);
-
-        const { rows } = await db.query(query, values);
-        return rows;
-    }
-
-    static async mettreAJour(id, utilisateur_id, produitData) {
-        const allowedFields = [
-            'nom', 'code_barre', 'calories', 'matieres_grasses',
-            'glucides', 'proteines', 'sel', 'stock',
-            'unite_stock', 'prix_unitaire', 'stock_limite', 'poids_par_tranche'
-        ];
-
-        const updates = [];
-        const values = [id, utilisateur_id];
-        let paramCount = 3;
-
-        if (produitData.unite_stock === 'TRANCHE' && !produitData.poids_par_tranche) {
-            throw new Error('Le poids par tranche est requis pour les produits en tranches');
-        }
-
-        if (produitData.unite_stock && produitData.unite_stock !== 'TRANCHE') {
-            produitData.poids_par_tranche = null;
-        }
-
-        for (const [key, value] of Object.entries(produitData)) {
-            if (allowedFields.includes(key)) {
-                updates.push(`${key} = $${paramCount}`);
-                values.push(value);
-                paramCount++;
+        return prisma.produit.create({
+            data: {
+                ...reste,
+                utilisateur: {
+                    connect: { id: utilisateur_id }
+                }
             }
+        });
+    }
+
+    static async trouverParId(id) {
+        return prisma.produit.findUnique({
+            where: { id },
+            include: {
+                utilisateur: true
+            }
+        });
+    }
+
+    static async trouverParCodeBarre(codeBarre) {
+        return prisma.produit.findFirst({
+            where: { code_barre: codeBarre }
+        });
+    }
+
+    static async lister(utilisateurId) {
+        return prisma.produit.findMany({
+            where: {
+                utilisateur: {
+                    id: utilisateurId
+                }
+            }
+        });
+    }
+
+    static async mettreAJour(id, produitData) {
+        const { utilisateur_id, ...reste } = produitData;
+        
+        // S'assurer que stock_limite est défini
+        if (reste.stock_limite === undefined || reste.stock_limite === null) {
+            reste.stock_limite = 0;
         }
-
-        if (updates.length === 0) return null;
-
-        const query = `
-            UPDATE produits 
-            SET ${updates.join(', ')} 
-            WHERE id = $1 AND utilisateur_id = $2
-            RETURNING *
-        `;
-
-        const { rows } = await db.query(query, values);
-        return rows[0];
+        
+        return prisma.produit.update({
+            where: { id },
+            data: reste,
+            include: {
+                utilisateur: true
+            }
+        });
     }
 
-    static async supprimer(id, utilisateur_id) {
-        const query = 'DELETE FROM produits WHERE id = $1 AND utilisateur_id = $2 RETURNING *';
-        const { rows } = await db.query(query, [id, utilisateur_id]);
-        return rows[0];
+    static async supprimer(id) {
+        return prisma.produit.delete({
+            where: { id },
+            include: {
+                utilisateur: true
+            }
+        });
     }
 
-    static async verifierStockBas(utilisateur_id) {
-        const query = `
-            SELECT 
-                id, nom, stock, stock_limite, unite_stock, poids_par_tranche,
-                CASE 
-                    WHEN unite_stock = 'TRANCHE' THEN stock || ' tranches'
-                    WHEN unite_stock = 'POURCENTAGE' THEN stock || '%'
-                    ELSE stock || ' unités'
-                END as stock_formatte
-            FROM produits 
-            WHERE utilisateur_id = $1 
-            AND stock <= stock_limite
-        `;
-        const { rows } = await db.query(query, [utilisateur_id]);
-        return rows;
+    static async mettreAJourStock(id, quantite) {
+        const produit = await this.trouverParId(id);
+        if (!produit) return null;
+
+        return prisma.produit.update({
+            where: { id },
+            data: {
+                stock: {
+                    increment: quantite
+                }
+            },
+            include: {
+                utilisateur: true
+            }
+        });
     }
 
-    static async mettreAJourStock(id, utilisateur_id, quantite) {
-        const query = `
-            UPDATE produits 
-            SET stock = stock + $3
-            WHERE id = $1 AND utilisateur_id = $2
-            RETURNING *
-        `;
-        const { rows } = await db.query(query, [id, utilisateur_id, quantite]);
-        return rows[0];
+    static async verifierStocksBas(utilisateurId) {
+        return prisma.produit.findMany({
+            where: {
+                AND: [
+                    {
+                        utilisateur: {
+                            id: utilisateurId
+                        }
+                    },
+                    {
+                        stock: {
+                            lte: prisma.produit.fields.stock_limite
+                        }
+                    }
+                ]
+            },
+            include: {
+                utilisateur: true
+            }
+        });
     }
 
-    static async getValeursNutritionnellesParTranche(id, utilisateur_id) {
-        const query = `
-            SELECT 
-                nom,
-                poids_par_tranche,
-                (calories * poids_par_tranche / 100) as calories_par_tranche,
-                (matieres_grasses * poids_par_tranche / 100) as matieres_grasses_par_tranche,
-                (glucides * poids_par_tranche / 100) as glucides_par_tranche,
-                (proteines * poids_par_tranche / 100) as proteines_par_tranche,
-                (sel * poids_par_tranche / 100) as sel_par_tranche
-            FROM produits 
-            WHERE id = $1 
-            AND utilisateur_id = $2 
-            AND unite_stock = 'TRANCHE'
-        `;
-        const { rows } = await db.query(query, [id, utilisateur_id]);
-        return rows[0];
+    static async getValeursNutritionnellesParTranche(id, utilisateurId) {
+        const produit = await prisma.produit.findFirst({
+            where: {
+                AND: [
+                    { id },
+                    {
+                        utilisateur: {
+                            id: utilisateurId
+                        }
+                    },
+                    {
+                        unite_stock: 'TRANCHE'
+                    }
+                ]
+            }
+        });
+
+        if (!produit) return null;
+
+        // Calculer les valeurs nutritionnelles par tranche
+        return {
+            ...produit,
+            calories_par_tranche: produit.calories / produit.stock,
+            matieres_grasses_par_tranche: produit.matieres_grasses / produit.stock,
+            glucides_par_tranche: produit.glucides / produit.stock,
+            proteines_par_tranche: produit.proteines / produit.stock,
+            sel_par_tranche: produit.sel / produit.stock
+        };
     }
 }
 

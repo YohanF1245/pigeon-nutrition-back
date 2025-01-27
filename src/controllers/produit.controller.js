@@ -4,27 +4,28 @@ const ProduitModel = require('../models/produit.model');
 class ProduitController {
     static async creer(req, res) {
         try {
-            const errors = validationResult(req);
-            if (!errors.isEmpty()) {
-                return res.status(400).json({ errors: errors.array() });
-            }
-
             const produitData = {
-                ...req.body,
+                nom: req.body.nom,
+                code_barre: req.body.code_barre,
+                calories: parseFloat(req.body.calories),
+                matieres_grasses: parseFloat(req.body.matieres_grasses),
+                glucides: parseFloat(req.body.glucides),
+                proteines: parseFloat(req.body.proteines),
+                sel: parseFloat(req.body.sel),
+                stock: parseFloat(req.body.stock),
+                prix_unitaire: parseFloat(req.body.prix_unitaire),
+                stock_limite: parseFloat(req.body.stock_limite || req.body.limite_stock),
+                unite_stock: req.body.unite_stock || 'UNITE',
                 utilisateur_id: req.user.id
             };
 
-            // Vérifier si le code-barres existe déjà pour cet utilisateur
-            const produitExistant = await ProduitModel.trouverParCodeBarre(produitData.code_barre, req.user.id);
+            const produitExistant = await ProduitModel.trouverParCodeBarre(produitData.code_barre);
             if (produitExistant) {
-                return res.status(400).json({ message: 'Ce code-barres est déjà utilisé' });
+                return res.status(400).json({ message: 'Un produit avec ce code barre existe déjà' });
             }
 
             const produit = await ProduitModel.creer(produitData);
-            res.status(201).json({
-                message: 'Produit créé avec succès',
-                produit
-            });
+            res.status(201).json(produit);
         } catch (error) {
             console.error('Erreur lors de la création du produit:', error);
             res.status(500).json({ message: 'Erreur lors de la création du produit' });
@@ -33,14 +34,8 @@ class ProduitController {
 
     static async lister(req, res) {
         try {
-            const { recherche, page, limite } = req.query;
-            const produits = await ProduitModel.lister(req.user.id, {
-                recherche,
-                page: parseInt(page) || 1,
-                limite: parseInt(limite) || 10
-            });
-
-            res.json({ produits });
+            const produits = await ProduitModel.lister(req.user.id);
+            res.json(produits);
         } catch (error) {
             console.error('Erreur lors de la récupération des produits:', error);
             res.status(500).json({ message: 'Erreur lors de la récupération des produits' });
@@ -49,12 +44,11 @@ class ProduitController {
 
     static async recuperer(req, res) {
         try {
-            const produit = await ProduitModel.trouverParId(req.params.id, req.user.id);
-            if (!produit) {
+            const produit = await ProduitModel.trouverParId(req.params.id);
+            if (!produit || produit.utilisateur.id !== req.user.id) {
                 return res.status(404).json({ message: 'Produit non trouvé' });
             }
-
-            res.json({ produit });
+            res.json(produit);
         } catch (error) {
             console.error('Erreur lors de la récupération du produit:', error);
             res.status(500).json({ message: 'Erreur lors de la récupération du produit' });
@@ -63,30 +57,27 @@ class ProduitController {
 
     static async mettreAJour(req, res) {
         try {
-            const errors = validationResult(req);
-            if (!errors.isEmpty()) {
-                return res.status(400).json({ errors: errors.array() });
-            }
-
-            // Vérifier si le produit existe
-            const produitExistant = await ProduitModel.trouverParId(req.params.id, req.user.id);
-            if (!produitExistant) {
+            const produitExistant = await ProduitModel.trouverParId(req.params.id);
+            if (!produitExistant || produitExistant.utilisateur.id !== req.user.id) {
                 return res.status(404).json({ message: 'Produit non trouvé' });
             }
 
-            // Si le code-barres est modifié, vérifier qu'il n'existe pas déjà
-            if (req.body.code_barre && req.body.code_barre !== produitExistant.code_barre) {
-                const produitAvecCodeBarre = await ProduitModel.trouverParCodeBarre(req.body.code_barre, req.user.id);
-                if (produitAvecCodeBarre) {
-                    return res.status(400).json({ message: 'Ce code-barres est déjà utilisé' });
-                }
-            }
+            const produitData = {
+                nom: req.body.nom,
+                code_barre: req.body.code_barre,
+                calories: parseFloat(req.body.calories),
+                matieres_grasses: parseFloat(req.body.matieres_grasses),
+                glucides: parseFloat(req.body.glucides),
+                proteines: parseFloat(req.body.proteines),
+                sel: parseFloat(req.body.sel),
+                stock: parseFloat(req.body.stock),
+                prix_unitaire: parseFloat(req.body.prix_unitaire),
+                stock_limite: parseFloat(req.body.stock_limite || req.body.limite_stock),
+                unite_stock: req.body.unite_stock || 'UNITE'
+            };
 
-            const produit = await ProduitModel.mettreAJour(req.params.id, req.user.id, req.body);
-            res.json({
-                message: 'Produit mis à jour avec succès',
-                produit
-            });
+            const produit = await ProduitModel.mettreAJour(req.params.id, produitData);
+            res.json(produit);
         } catch (error) {
             console.error('Erreur lors de la mise à jour du produit:', error);
             res.status(500).json({ message: 'Erreur lors de la mise à jour du produit' });
@@ -95,15 +86,13 @@ class ProduitController {
 
     static async supprimer(req, res) {
         try {
-            const produit = await ProduitModel.supprimer(req.params.id, req.user.id);
-            if (!produit) {
+            const produitExistant = await ProduitModel.trouverParId(req.params.id);
+            if (!produitExistant || produitExistant.utilisateur.id !== req.user.id) {
                 return res.status(404).json({ message: 'Produit non trouvé' });
             }
 
-            res.json({
-                message: 'Produit supprimé avec succès',
-                produit
-            });
+            const produit = await ProduitModel.supprimer(req.params.id);
+            res.json({ message: 'Produit supprimé avec succès' });
         } catch (error) {
             console.error('Erreur lors de la suppression du produit:', error);
             res.status(500).json({ message: 'Erreur lors de la suppression du produit' });
@@ -112,32 +101,14 @@ class ProduitController {
 
     static async mettreAJourStock(req, res) {
         try {
-            const errors = validationResult(req);
-            if (!errors.isEmpty()) {
-                return res.status(400).json({ errors: errors.array() });
-            }
-
-            const { quantite } = req.body;
-            const produit = await ProduitModel.mettreAJourStock(req.params.id, req.user.id, quantite);
-            
-            if (!produit) {
+            const produitExistant = await ProduitModel.trouverParId(req.params.id);
+            if (!produitExistant || produitExistant.utilisateur.id !== req.user.id) {
                 return res.status(404).json({ message: 'Produit non trouvé' });
             }
 
-            // Vérifier si le stock est bas après la mise à jour
-            if (produit.stock <= produit.stock_limite) {
-                // Dans un vrai système, on pourrait envoyer une notification ici
-                return res.json({
-                    message: 'Stock mis à jour avec succès - ATTENTION: Stock bas',
-                    produit,
-                    alerte: 'Stock bas'
-                });
-            }
-
-            res.json({
-                message: 'Stock mis à jour avec succès',
-                produit
-            });
+            const { quantite } = req.body;
+            const produit = await ProduitModel.mettreAJourStock(req.params.id, parseFloat(quantite));
+            res.json(produit);
         } catch (error) {
             console.error('Erreur lors de la mise à jour du stock:', error);
             res.status(500).json({ message: 'Erreur lors de la mise à jour du stock' });
@@ -146,11 +117,8 @@ class ProduitController {
 
     static async verifierStocksBas(req, res) {
         try {
-            const produits = await ProduitModel.verifierStockBas(req.user.id);
-            res.json({
-                produits,
-                message: produits.length > 0 ? 'Produits avec stock bas trouvés' : 'Aucun produit avec stock bas'
-            });
+            const produits = await ProduitModel.verifierStocksBas(req.user.id);
+            res.json(produits);
         } catch (error) {
             console.error('Erreur lors de la vérification des stocks bas:', error);
             res.status(500).json({ message: 'Erreur lors de la vérification des stocks bas' });

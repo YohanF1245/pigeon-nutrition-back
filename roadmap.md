@@ -5,9 +5,12 @@
 - [x] Configuration de la base de données PostgreSQL
 - [x] Mise en place des middlewares essentiels
 - [x] Configuration des variables d'environnement
+- [x] Migration vers Prisma ORM
+- [x] Configuration du schéma Prisma
+- [x] Mise en place des migrations automatiques
 
 ## Phase 2 : Gestion des Utilisateurs (Semaine 2)
-- [x] Création de la table utilisateurs
+- [x] Création du modèle Prisma pour les utilisateurs
 - [x] Mise en place de l'authentification JWT
 - [x] Création des roles utilisateurs
 - [x] Endpoints de gestion des utilisateurs :
@@ -19,14 +22,15 @@
 - [x] Tests des endpoints utilisateurs
 
 ## Phase 3 : Gestion des Produits (Semaine 3)
-- [x] Création des routes CRUD pour les produits
+- [x] Création du modèle Prisma pour les produits
 - [x] Validation des données produits
 - [x] Gestion des stocks et alertes
 - [x] Tests des endpoints produits
 - [x] Documentation des endpoints produits
+- [ ] Revoir la gestion des unités de stock
 
 ## Phase 4 : Gestion des Repas (Semaine 4)
-- [ ] Création des routes CRUD pour les repas
+- [ ] Création du modèle Prisma pour les repas
 - [ ] Calculs nutritionnels
 - [ ] Association produits-repas
 - [ ] Tests des endpoints repas
@@ -40,7 +44,7 @@
 - [ ] Tests des endpoints dashboard
 
 ## Phase 6 : Optimisation et Sécurité (Semaine 6)
-- [ ] Optimisation des performances
+- [ ] Optimisation des requêtes Prisma
 - [ ] Mise en cache des données fréquemment utilisées
 - [ ] Sécurisation des endpoints
 - [ ] Tests de charge
@@ -52,6 +56,26 @@
 - [ ] Guide d'utilisation
 - [ ] Déploiement en production
 - [ ] Monitoring et logging
+
+## Outils et Technologies
+
+### Base de données
+- PostgreSQL comme base de données principale
+- Prisma comme ORM
+- Migrations automatiques avec Prisma
+- Studio Prisma pour la visualisation des données
+
+### Backend
+- Express.js pour l'API REST
+- JWT pour l'authentification
+- Swagger pour la documentation API
+- Validation des données avec Express Validator
+
+### DevOps
+- Docker pour la conteneurisation
+- Docker Compose pour l'orchestration
+- Scripts automatisés pour les migrations
+- Environnements de développement et production séparés
 
 ## 1. Règles de Gestion
 - Un produit doit avoir un nom unique et un code-barres unique

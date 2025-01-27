@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UniteStock {
+  UNITE
+  POURCENTAGE
+  TRANCHE
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model Utilisateur {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  mot_de_passe      String
+  nom               String
+  prenom            String
+  role              Role      @default(USER)
+  date_creation     DateTime  @default(now())
+  date_modification DateTime  @updatedAt
+  produits          Produit[]
+  repas             Repas[]
+
+  @@map("utilisateurs")
+}
+
+model Produit {
+  id                String            @id @default(uuid())
+  utilisateur_id    String
+  utilisateur       Utilisateur       @relation(fields: [utilisateur_id], references: [id])
+  nom               String
+  code_barre        String?
+  calories          Float
+  matieres_grasses  Float
+  glucides          Float
+  proteines         Float
+  sel               Float
+  stock             Float
+  unite_stock       UniteStock       @default(UNITE)
+  prix_unitaire     Float
+  stock_limite      Float
+  date_creation     DateTime         @default(now())
+  date_modification DateTime         @updatedAt
+  compositions      CompositionRepas[]
+
+  @@unique([utilisateur_id, code_barre])
+  @@unique([utilisateur_id, nom])
+  @@map("produits")
+}
+
+model Repas {
+  id                String            @id @default(uuid())
+  utilisateur_id    String
+  utilisateur       Utilisateur       @relation(fields: [utilisateur_id], references: [id])
+  nom               String
+  date              DateTime
+  date_creation     DateTime         @default(now())
+  date_modification DateTime         @updatedAt
+  compositions      CompositionRepas[]
+
+  @@map("repas")
+}
+
+model CompositionRepas {
+  id          String   @id @default(uuid())
+  repas_id    String
+  repas       Repas    @relation(fields: [repas_id], references: [id])
+  produit_id  String
+  produit     Produit  @relation(fields: [produit_id], references: [id])
+  quantite    Float
+
+  @@map("composition_repas")
+}

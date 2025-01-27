@@ -2,7 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Types énumérés
-CREATE TYPE unite_stock_type AS ENUM ('UNITE', 'POURCENTAGE');
+CREATE TYPE unite_stock_type AS ENUM ('UNITE', 'POURCENTAGE', 'TRANCHE');
 CREATE TYPE role_type AS ENUM ('ADMIN', 'USER');
 
 -- Table des utilisateurs
@@ -32,10 +32,15 @@ CREATE TABLE IF NOT EXISTS produits (
     unite_stock unite_stock_type NOT NULL,
     prix_unitaire DECIMAL(10,2) NOT NULL,
     stock_limite DECIMAL(10,2) NOT NULL,
+    poids_par_tranche DECIMAL(10,2),  -- Poids en grammes par tranche (NULL si pas de tranches)
     date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     date_modification TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(utilisateur_id, code_barre),
-    UNIQUE(utilisateur_id, nom)
+    UNIQUE(utilisateur_id, nom),
+    CHECK (
+        (unite_stock = 'TRANCHE' AND poids_par_tranche IS NOT NULL) OR
+        (unite_stock != 'TRANCHE' AND poids_par_tranche IS NULL)
+    )
 );
 
 -- Table des repas

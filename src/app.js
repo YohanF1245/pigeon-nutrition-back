@@ -6,6 +6,7 @@ require('dotenv').config();
 
 // Import des routes
 const authRoutes = require('./routes/auth.routes');
+const produitRoutes = require('./routes/produit.routes');
 
 // Import de la configuration Swagger
 const swaggerSpec = require('./config/swagger');
@@ -27,6 +28,9 @@ app.get('/', (req, res) => {
 
 // Routes d'authentification
 app.use('/api/auth', authRoutes);
+
+// Routes des produits
+app.use('/api/produits', produitRoutes);
 
 // Gestion des erreurs
 app.use((err, req, res, next) => {

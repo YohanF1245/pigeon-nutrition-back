@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const UtilisateurModel = require('../models/utilisateur.model');
+const bcrypt = require('bcryptjs');
 
 class AuthController {
     static async register(req, res) {
@@ -152,31 +153,50 @@ class AuthController {
 
     static async resetPassword(req, res) {
         try {
-            const errors = validationResult(req);
-            if (!errors.isEmpty()) {
-                return res.status(400).json({ errors: errors.array() });
+            const { motDePasseActuel, nouveauMotDePasse } = req.body;
+            const userId = req.user.id;
+
+            if (!motDePasseActuel || !nouveauMotDePasse) {
+                return res.status(400).json({
+                    message: "Le mot de passe actuel et le nouveau mot de passe sont requis"
+                });
             }
 
-            const { ancien_mot_de_passe, nouveau_mot_de_passe } = req.body;
+            // Récupérer l'utilisateur avec son mot de passe
+            const utilisateur = await UtilisateurModel.findById(userId);
+            if (!utilisateur) {
+                return res.status(404).json({
+                    message: "Utilisateur non trouvé"
+                });
+            }
 
-            // Vérifier l'ancien mot de passe
-            const utilisateur = await UtilisateurModel.trouverParId(req.user.id);
+            // Vérification du mot de passe actuel
             const motDePasseValide = await UtilisateurModel.verifierMotDePasse(
-                ancien_mot_de_passe,
+                motDePasseActuel,
                 utilisateur.mot_de_passe
             );
 
             if (!motDePasseValide) {
-                return res.status(401).json({ message: 'Ancien mot de passe incorrect' });
+                return res.status(401).json({
+                    message: "Mot de passe actuel incorrect"
+                });
             }
 
-            // Mettre à jour le mot de passe
-            await UtilisateurModel.changerMotDePasse(req.user.id, nouveau_mot_de_passe);
+            // Hashage et mise à jour du nouveau mot de passe
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(nouveauMotDePasse, salt);
 
-            res.json({ message: 'Mot de passe mis à jour avec succès' });
+            // Mise à jour du mot de passe dans la base de données
+            await UtilisateurModel.updatePassword(userId, hashedPassword);
+
+            res.status(200).json({
+                message: "Mot de passe mis à jour avec succès"
+            });
         } catch (error) {
-            console.error('Erreur lors de la réinitialisation du mot de passe:', error);
-            res.status(500).json({ message: 'Erreur lors de la réinitialisation du mot de passe' });
+            console.error("Erreur lors de la réinitialisation du mot de passe:", error);
+            res.status(500).json({
+                message: "Erreur lors de la réinitialisation du mot de passe"
+            });
         }
     }
 }

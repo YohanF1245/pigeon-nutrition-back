@@ -23,6 +23,9 @@ const options = {
                 },
             },
         },
+        security: [{
+            bearerAuth: [],
+        }],
     },
     apis: ['./src/routes/*.js'], // Chemins des fichiers contenant les annotations
 };

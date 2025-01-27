@@ -6,108 +6,121 @@ const authMiddleware = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
- * /api/produits:
- *   post:
- *     tags: [Produits]
- *     summary: Créer un nouveau produit
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - nom
- *               - code_barre
- *               - calories
- *               - matieres_grasses
- *               - glucides
- *               - proteines
- *               - sel
- *               - stock
- *               - unite_stock
- *               - prix_unitaire
- *               - stock_limite
- *             properties:
- *               nom:
- *                 type: string
- *               code_barre:
- *                 type: string
- *               calories:
- *                 type: number
- *               matieres_grasses:
- *                 type: number
- *               glucides:
- *                 type: number
- *               proteines:
- *                 type: number
- *               sel:
- *                 type: number
- *               stock:
- *                 type: number
- *               unite_stock:
- *                 type: string
- *                 enum: [UNITE, POURCENTAGE]
- *               prix_unitaire:
- *                 type: number
- *               stock_limite:
- *                 type: number
- *     responses:
- *       201:
- *         description: Produit créé avec succès
+ * components:
+ *   schemas:
+ *     Produit:
+ *       type: object
+ *       required:
+ *         - nom
+ *         - calories
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: ID auto-généré du produit
+ *         nom:
+ *           type: string
+ *           description: Nom du produit
+ *         code_barre:
+ *           type: string
+ *           description: Code barre du produit
+ *         calories:
+ *           type: number
+ *           description: Calories pour 100g
+ *         matieres_grasses:
+ *           type: number
+ *           description: Matières grasses pour 100g
+ *         glucides:
+ *           type: number
+ *           description: Glucides pour 100g
+ *         proteines:
+ *           type: number
+ *           description: Protéines pour 100g
+ *         sel:
+ *           type: number
+ *           description: Sel pour 100g
+ *         stock:
+ *           type: number
+ *           description: Quantité en stock
+ *         prix_unitaire:
+ *           type: number
+ *           description: Prix unitaire
+ *         limite_stock:
+ *           type: number
+ *           description: Limite de stock
  */
-router.post('/', authMiddleware, produitValidationRules.creer, ProduitController.creer);
 
 /**
  * @swagger
  * /api/produits:
  *   get:
- *     tags: [Produits]
- *     summary: Lister tous les produits
+ *     summary: Récupère tous les produits
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: recherche
- *         schema:
- *           type: string
- *         description: Terme de recherche pour filtrer les produits
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *         description: Numéro de la page
- *       - in: query
- *         name: limite
- *         schema:
- *           type: integer
- *         description: Nombre d'éléments par page
+ *     tags: [Produits]
  *     responses:
  *       200:
  *         description: Liste des produits
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Produit'
+ *       401:
+ *         description: Non autorisé
  */
 router.get('/', authMiddleware, ProduitController.lister);
 
 /**
  * @swagger
- * /api/produits/{id}:
- *   get:
- *     tags: [Produits]
- *     summary: Récupérer un produit par son ID
+ * /api/produits:
+ *   post:
+ *     summary: Crée un nouveau produit
  *     security:
  *       - bearerAuth: []
+ *     tags: [Produits]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Produit'
+ *     responses:
+ *       201:
+ *         description: Produit créé avec succès
+ *       401:
+ *         description: Non autorisé
+ *       400:
+ *         description: Données invalides
+ */
+router.post('/', authMiddleware, produitValidationRules.creer, ProduitController.creer);
+
+/**
+ * @swagger
+ * /api/produits/{id}:
+ *   get:
+ *     summary: Récupère un produit par son ID
+ *     security:
+ *       - bearerAuth: []
+ *     tags: [Produits]
  *     parameters:
  *       - in: path
  *         name: id
- *         required: true
  *         schema:
  *           type: string
+ *         required: true
  *         description: ID du produit
  *     responses:
  *       200:
  *         description: Détails du produit
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Produit'
+ *       401:
+ *         description: Non autorisé
+ *       404:
+ *         description: Produit non trouvé
  */
 router.get('/:id', authMiddleware, ProduitController.recuperer);
 

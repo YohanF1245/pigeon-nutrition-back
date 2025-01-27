@@ -1,64 +1,59 @@
-version: '3.8'
-
 services:
   api:
+    container_name: pigeon-nutrition-api-dev
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: pigeon-nutrition-api-dev
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=pigeon_nutrition_dev
-      - DB_USER=pigeon_user
-      - DB_PASSWORD=pigeon_password
-      - POSTGRES_PASSWORD=postgres_root_password
-      - JWT_SECRET=your_jwt_secret_dev
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/pigeon_nutrition?schema=public
     volumes:
       - .:/app
       - /app/node_modules
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
     networks:
-      - pigeon-network-dev
+      - app-network
 
-  postgres:
-    image: postgres:15-alpine
+  db:
     container_name: pigeon-nutrition-db-dev
+    image: postgres:15-alpine
     environment:
-      - POSTGRES_PASSWORD=postgres_root_password
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=pigeon_nutrition
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data_dev:/var/lib/postgresql/data
     networks:
-      - pigeon-network-dev
+      - app-network
 
   pgadmin:
-    image: dpage/pgadmin4
     container_name: pigeon-nutrition-pgadmin-dev
+    image: dpage/pgadmin4
     environment:
       - PGADMIN_DEFAULT_EMAIL=admin@admin.com
       - PGADMIN_DEFAULT_PASSWORD=admin
     ports:
       - "5050:80"
     depends_on:
-      - postgres
+      - db
     networks:
-      - pigeon-network-dev
+      - app-network
 
 volumes:
-  postgres_data_dev:
+  postgres_data:
 
 networks:
-  pigeon-network-dev:
+  app-network:
     driver: bridge 

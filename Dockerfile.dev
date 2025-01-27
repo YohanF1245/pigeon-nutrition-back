@@ -2,12 +2,24 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+# Installation des dépendances système nécessaires
+RUN apk add --no-cache python3 make g++ openssl
 
+# Copie des fichiers de dépendances
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Installation des dépendances npm
 RUN npm install
 
+# Génération du client Prisma
+RUN npx prisma generate
+
+# Copie du reste des fichiers
 COPY . .
 
+# Exposition du port
 EXPOSE 3000
 
+# Commande par défaut (sera écrasée par docker-compose)
 CMD ["npm", "run", "dev"] 

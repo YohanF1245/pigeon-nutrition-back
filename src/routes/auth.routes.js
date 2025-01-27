@@ -186,7 +186,7 @@ router.put('/profile', [authMiddleware, updateProfileValidator], AuthController.
  * @swagger
  * /api/auth/reset-password:
  *   post:
- *     summary: Réinitialisation du mot de passe
+ *     summary: Réinitialiser le mot de passe
  *     tags: [Authentification]
  *     security:
  *       - bearerAuth: []
@@ -197,25 +197,27 @@ router.put('/profile', [authMiddleware, updateProfileValidator], AuthController.
  *           schema:
  *             type: object
  *             required:
- *               - ancien_mot_de_passe
- *               - nouveau_mot_de_passe
+ *               - motDePasseActuel
+ *               - nouveauMotDePasse
  *             properties:
- *               ancien_mot_de_passe:
+ *               motDePasseActuel:
  *                 type: string
- *               nouveau_mot_de_passe:
+ *                 description: Mot de passe actuel
+ *               nouveauMotDePasse:
  *                 type: string
- *                 minLength: 6
+ *                 description: Nouveau mot de passe
  *     responses:
  *       200:
  *         description: Mot de passe mis à jour avec succès
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
+ *       400:
+ *         description: Données manquantes ou invalides
+ *       401:
+ *         description: Mot de passe actuel incorrect
+ *       404:
+ *         description: Utilisateur non trouvé
+ *       500:
+ *         description: Erreur serveur
  */
-router.post('/reset-password', [authMiddleware, resetPasswordValidator], AuthController.resetPassword);
+router.post('/reset-password', authMiddleware, AuthController.resetPassword);
 
 module.exports = router; 

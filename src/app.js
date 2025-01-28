@@ -7,6 +7,9 @@ require('dotenv').config();
 // Import des routes
 const authRoutes = require('./routes/auth.routes');
 const produitRoutes = require('./routes/produit.routes');
+const repasRoutes = require('./routes/repas.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
+const testRoutes = require('./routes/test.routes');
 
 // Import de la configuration Swagger
 const swaggerSpec = require('./config/swagger');
@@ -31,6 +34,17 @@ app.use('/api/auth', authRoutes);
 
 // Routes des produits
 app.use('/api/produits', produitRoutes);
+
+// Routes des repas
+app.use('/api/repas', repasRoutes);
+
+// Routes du dashboard
+app.use('/api/dashboard', dashboardRoutes);
+
+// Routes de test (uniquement en développement)
+if (process.env.NODE_ENV === 'development') {
+  app.use('/api/test', testRoutes);
+}
 
 // Gestion des erreurs
 app.use((err, req, res, next) => {

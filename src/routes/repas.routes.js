@@ -100,6 +100,22 @@ router.use(verifierToken);
  *               description:
  *                 type: string
  *                 maxLength: 500
+ *               produits:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - produit_id
+ *                     - quantite
+ *                   properties:
+ *                     produit_id:
+ *                       type: string
+ *                       format: uuid
+ *                       description: ID du produit à ajouter
+ *                     quantite:
+ *                       type: number
+ *                       minimum: 0.01
+ *                       description: Quantité du produit
  *     responses:
  *       201:
  *         description: Repas créé avec succès

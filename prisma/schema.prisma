@@ -69,10 +69,12 @@ model Repas {
   utilisateur       Utilisateur       @relation(fields: [utilisateur_id], references: [id])
   nom               String
   date              DateTime
+  description       String?
   date_creation     DateTime         @default(now())
   date_modification DateTime         @updatedAt
   compositions      CompositionRepas[]
 
+  @@unique([id, utilisateur_id], name: "id_utilisateur_id")
   @@map("repas")
 }
 

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const RepasController = require('../controllers/repas.controller');
 const { repasValidationRules } = require('../validators/repas.validator');
-const { verifierToken } = require('../middlewares/auth.middleware');
+const authMiddleware = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -69,8 +69,8 @@ const { verifierToken } = require('../middlewares/auth.middleware');
  *           description: Quantité du produit dans le repas
  */
 
-// Routes protégées par authentification
-router.use(verifierToken);
+// Appliquer le middleware d'authentification à toutes les routes
+router.use(authMiddleware);
 
 /**
  * @swagger

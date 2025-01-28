@@ -35,6 +35,7 @@ model Utilisateur {
   date_modification DateTime  @updatedAt
   produits          Produit[]
   repas             Repas[]
+  rapports          RapportNutritionnel[]
 
   @@map("utilisateurs")
 }
@@ -73,6 +74,7 @@ model Repas {
   date_creation     DateTime         @default(now())
   date_modification DateTime         @updatedAt
   compositions      CompositionRepas[]
+  statistiques      StatistiqueRepas[]
 
   @@unique([id, utilisateur_id], name: "id_utilisateur_id")
   @@map("repas")
@@ -87,4 +89,34 @@ model CompositionRepas {
   quantite    Float
 
   @@map("composition_repas")
+}
+
+model StatistiqueRepas {
+  id                String    @id @default(uuid())
+  repas_id          String
+  repas             Repas     @relation(fields: [repas_id], references: [id])
+  calories_total    Float
+  glucides_total    Float
+  proteines_total   Float
+  lipides_total     Float
+  sel_total         Float
+  date_calcul       DateTime  @default(now())
+
+  @@map("statistiques_repas")
+}
+
+model RapportNutritionnel {
+  id                String    @id @default(uuid())
+  utilisateur_id    String
+  utilisateur       Utilisateur @relation(fields: [utilisateur_id], references: [id])
+  date_debut        DateTime
+  date_fin          DateTime
+  calories_moyenne  Float
+  glucides_moyenne  Float
+  proteines_moyenne Float
+  lipides_moyenne   Float
+  sel_moyenne       Float
+  date_generation   DateTime  @default(now())
+
+  @@map("rapports_nutritionnels")
 }

@@ -239,4 +239,149 @@ describe('RepasModel', () => {
       expect(compositions.length).toBe(0);
     });
   });
+
+  describe('gestion des produits', () => {
+    let produitTest;
+
+    beforeEach(async () => {
+      // Créer un produit de test
+      produitTest = await prisma.produit.create({
+        data: {
+          nom: 'Pain',
+          calories: 265,
+          matieres_grasses: 3.2,
+          glucides: 49,
+          proteines: 9,
+          sel: 0.6,
+          stock: 100,
+          prix_unitaire: 2.5,
+          stock_limite: 10,
+          utilisateur: {
+            connect: { id: utilisateurTest.id }
+          }
+        }
+      });
+    });
+
+    describe('ajouterProduit', () => {
+      it('devrait ajouter un produit au repas', async () => {
+        const composition = await RepasModel.ajouterProduit(repasTest.id, produitTest.id, 2);
+
+        expect(composition).toBeDefined();
+        expect(composition.repas_id).toBe(repasTest.id);
+        expect(composition.produit_id).toBe(produitTest.id);
+        expect(composition.quantite).toBe(2);
+      });
+
+      it('devrait échouer pour un repas inexistant', async () => {
+        await expect(
+          RepasModel.ajouterProduit('id-inexistant', produitTest.id, 2)
+        ).rejects.toThrow();
+      });
+
+      it('devrait échouer pour un produit inexistant', async () => {
+        await expect(
+          RepasModel.ajouterProduit(repasTest.id, 'id-inexistant', 2)
+        ).rejects.toThrow();
+      });
+    });
+
+    describe('supprimerProduit', () => {
+      let compositionTest;
+
+      beforeEach(async () => {
+        compositionTest = await RepasModel.ajouterProduit(repasTest.id, produitTest.id, 2);
+      });
+
+      it('devrait supprimer un produit du repas', async () => {
+        const resultat = await RepasModel.supprimerProduit(
+          repasTest.id,
+          compositionTest.id,
+          utilisateurTest.id
+        );
+
+        expect(resultat).toBeDefined();
+        expect(resultat.id).toBe(compositionTest.id);
+
+        // Vérifier que la composition a bien été supprimée
+        const compositions = await prisma.compositionRepas.findMany({
+          where: { id: compositionTest.id }
+        });
+        expect(compositions.length).toBe(0);
+      });
+
+      it('devrait échouer pour une composition inexistante', async () => {
+        await expect(
+          RepasModel.supprimerProduit(repasTest.id, 'id-inexistant', utilisateurTest.id)
+        ).rejects.toThrow();
+      });
+
+      it('devrait échouer pour un mauvais utilisateur', async () => {
+        const resultat = await RepasModel.supprimerProduit(
+          repasTest.id,
+          compositionTest.id,
+          'mauvais-utilisateur'
+        );
+        expect(resultat).toBeNull();
+      });
+    });
+
+    describe('calculerNutriments', () => {
+      beforeEach(async () => {
+        await RepasModel.ajouterProduit(repasTest.id, produitTest.id, 100); // 100g de pain
+      });
+
+      it('devrait calculer les nutriments totaux du repas', async () => {
+        const nutriments = await RepasModel.calculerNutriments(repasTest.id, utilisateurTest.id);
+
+        expect(nutriments).toBeDefined();
+        expect(nutriments.calories_total).toBe(265); // 100g = valeurs nutritionnelles telles quelles
+        expect(nutriments.matieres_grasses_total).toBe(3.2);
+        expect(nutriments.glucides_total).toBe(49);
+        expect(nutriments.proteines_total).toBe(9);
+        expect(nutriments.sel_total).toBe(0.6);
+      });
+
+      it('devrait retourner null pour un repas inexistant', async () => {
+        const nutriments = await RepasModel.calculerNutriments('id-inexistant', utilisateurTest.id);
+        expect(nutriments).toBeNull();
+      });
+
+      it('devrait retourner null pour un mauvais utilisateur', async () => {
+        const nutriments = await RepasModel.calculerNutriments(repasTest.id, 'mauvais-utilisateur');
+        expect(nutriments).toBeNull();
+      });
+
+      it('devrait calculer correctement pour plusieurs produits', async () => {
+        // Ajouter un deuxième produit
+        const produit2 = await prisma.produit.create({
+          data: {
+            nom: 'Beurre',
+            calories: 717,
+            matieres_grasses: 81,
+            glucides: 0.1,
+            proteines: 0.8,
+            sel: 0.1,
+            stock: 100,
+            prix_unitaire: 3.5,
+            stock_limite: 5,
+            utilisateur: {
+              connect: { id: utilisateurTest.id }
+            }
+          }
+        });
+
+        await RepasModel.ajouterProduit(repasTest.id, produit2.id, 10); // 10g de beurre
+
+        const nutriments = await RepasModel.calculerNutriments(repasTest.id, utilisateurTest.id);
+
+        expect(nutriments).toBeDefined();
+        expect(nutriments.calories_total).toBeCloseTo(265 + 71.7); // 100g pain + 10g beurre
+        expect(nutriments.matieres_grasses_total).toBeCloseTo(3.2 + 8.1);
+        expect(nutriments.glucides_total).toBeCloseTo(49 + 0.01);
+        expect(nutriments.proteines_total).toBeCloseTo(9 + 0.08);
+        expect(nutriments.sel_total).toBeCloseTo(0.6 + 0.01);
+      });
+    });
+  });
 }); 

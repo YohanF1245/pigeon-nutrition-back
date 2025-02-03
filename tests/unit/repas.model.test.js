@@ -127,4 +127,52 @@ describe('RepasModel', () => {
       expect(repas.length).toBe(2);
     });
   });
+
+  describe('mettreAJour', () => {
+    it('devrait mettre à jour un repas avec succès', async () => {
+      const miseAJour = {
+        nom: 'Petit déjeuner modifié',
+        description: 'Description modifiée'
+      };
+
+      const repas = await RepasModel.mettreAJour(repasTest.id, utilisateurTest.id, miseAJour);
+
+      expect(repas).toBeDefined();
+      expect(repas.id).toBe(repasTest.id);
+      expect(repas.nom).toBe(miseAJour.nom);
+      expect(repas.description).toBe(miseAJour.description);
+      expect(repas.utilisateur_id).toBe(utilisateurTest.id);
+    });
+
+    it('devrait échouer pour un repas inexistant', async () => {
+      const miseAJour = {
+        nom: 'Petit déjeuner modifié'
+      };
+
+      await expect(
+        RepasModel.mettreAJour('id-inexistant', utilisateurTest.id, miseAJour)
+      ).rejects.toThrow();
+    });
+
+    it('devrait échouer pour un mauvais utilisateur', async () => {
+      const miseAJour = {
+        nom: 'Petit déjeuner modifié'
+      };
+
+      await expect(
+        RepasModel.mettreAJour(repasTest.id, 'mauvais-utilisateur', miseAJour)
+      ).rejects.toThrow();
+    });
+
+    it('devrait mettre à jour uniquement les champs fournis', async () => {
+      const miseAJour = {
+        nom: 'Nouveau nom'
+      };
+
+      const repas = await RepasModel.mettreAJour(repasTest.id, utilisateurTest.id, miseAJour);
+
+      expect(repas.nom).toBe(miseAJour.nom);
+      expect(repas.description).toBe(repasTest.description); // La description ne devrait pas changer
+    });
+  });
 }); 

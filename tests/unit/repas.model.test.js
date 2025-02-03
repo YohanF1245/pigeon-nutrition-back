@@ -175,4 +175,68 @@ describe('RepasModel', () => {
       expect(repas.description).toBe(repasTest.description); // La description ne devrait pas changer
     });
   });
+
+  describe('supprimer', () => {
+    it('devrait supprimer un repas avec succès', async () => {
+      const repas = await RepasModel.supprimer(repasTest.id, utilisateurTest.id);
+
+      expect(repas).toBeDefined();
+      expect(repas.id).toBe(repasTest.id);
+
+      // Vérifier que le repas a bien été supprimé
+      const repasSupp = await RepasModel.trouverParId(repasTest.id, utilisateurTest.id);
+      expect(repasSupp).toBeNull();
+    });
+
+    it('devrait échouer pour un repas inexistant', async () => {
+      await expect(
+        RepasModel.supprimer('id-inexistant', utilisateurTest.id)
+      ).rejects.toThrow();
+    });
+
+    it('devrait échouer pour un mauvais utilisateur', async () => {
+      await expect(
+        RepasModel.supprimer(repasTest.id, 'mauvais-utilisateur')
+      ).rejects.toThrow();
+    });
+
+    it('devrait supprimer les compositions associées', async () => {
+      // Créer un produit de test
+      const produit = await prisma.produit.create({
+        data: {
+          nom: 'Pain',
+          calories: 265,
+          matieres_grasses: 3.2,
+          glucides: 49,
+          proteines: 9,
+          sel: 0.6,
+          stock: 100,
+          prix_unitaire: 2.5,
+          stock_limite: 10,
+          utilisateur: {
+            connect: { id: utilisateurTest.id }
+          }
+        }
+      });
+
+      // Ajouter le produit au repas
+      await RepasModel.ajouterProduit(repasTest.id, produit.id, 2);
+
+      // Vérifier que la composition existe
+      const repasAvant = await RepasModel.trouverParId(repasTest.id, utilisateurTest.id);
+      expect(repasAvant.compositions.length).toBe(1);
+
+      // Supprimer le repas
+      await RepasModel.supprimer(repasTest.id, utilisateurTest.id);
+
+      // Vérifier que le repas et ses compositions ont été supprimés
+      const repasApres = await RepasModel.trouverParId(repasTest.id, utilisateurTest.id);
+      expect(repasApres).toBeNull();
+
+      const compositions = await prisma.compositionRepas.findMany({
+        where: { repas_id: repasTest.id }
+      });
+      expect(compositions.length).toBe(0);
+    });
+  });
 }); 

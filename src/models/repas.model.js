@@ -1,11 +1,16 @@
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
 
 class RepasModel {
+    static prisma = new PrismaClient();
+
+    static setPrismaClient(client) {
+        this.prisma = client;
+    }
+
     static async creer(repasData) {
         const { utilisateur_id, nom, date, description } = repasData;
 
-        return prisma.repas.create({
+        return this.prisma.repas.create({
             data: {
                 nom,
                 date: new Date(date),
@@ -26,7 +31,7 @@ class RepasModel {
     }
 
     static async ajouterProduit(repas_id, produit_id, quantite) {
-        return prisma.compositionRepas.create({
+        return this.prisma.compositionRepas.create({
             data: {
                 repas: {
                     connect: { id: repas_id }
@@ -43,7 +48,7 @@ class RepasModel {
     }
 
     static async trouverParId(id, utilisateur_id) {
-        return prisma.repas.findFirst({
+        return this.prisma.repas.findFirst({
             where: {
                 id,
                 utilisateur_id
@@ -70,7 +75,7 @@ class RepasModel {
             where.date = new Date(date);
         }
 
-        return prisma.repas.findMany({
+        return this.prisma.repas.findMany({
             where,
             include: {
                 compositions: {
@@ -91,7 +96,7 @@ class RepasModel {
     static async mettreAJour(id, utilisateur_id, repasData) {
         const { nom, date, description } = repasData;
 
-        return prisma.repas.update({
+        return this.prisma.repas.update({
             where: {
                 id_utilisateur_id: {
                     id,
@@ -114,7 +119,7 @@ class RepasModel {
     }
 
     static async supprimer(id, utilisateur_id) {
-        return prisma.repas.delete({
+        return this.prisma.repas.delete({
             where: {
                 id_utilisateur_id: {
                     id,
@@ -129,7 +134,7 @@ class RepasModel {
         const repas = await this.trouverParId(repas_id, utilisateur_id);
         if (!repas) return null;
 
-        return prisma.compositionRepas.delete({
+        return this.prisma.compositionRepas.delete({
             where: {
                 id: composition_id
             }
@@ -137,7 +142,7 @@ class RepasModel {
     }
 
     static async calculerNutriments(repas_id, utilisateur_id) {
-        const repas = await prisma.repas.findFirst({
+        const repas = await this.prisma.repas.findFirst({
             where: {
                 id: repas_id,
                 utilisateur_id

@@ -5,6 +5,8 @@ const mockPrisma = {
     findMany: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
+    $queryRaw: jest.fn(),
+    $executeRawUnsafe: jest.fn(),
   },
   compositionRepas: {
     create: jest.fn(),
@@ -15,6 +17,8 @@ const mockPrisma = {
     create: jest.fn(),
     findFirst: jest.fn(),
   },
+  $connect: jest.fn(),
+  $disconnect: jest.fn(),
 };
 
 jest.mock('@prisma/client', () => ({

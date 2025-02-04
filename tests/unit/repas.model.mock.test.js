@@ -174,4 +174,113 @@ describe('RepasModel - Read', () => {
       await expect(RepasModel.lister('user-123')).rejects.toThrow(error);
     });
   });
+});
+
+describe('RepasModel - Update', () => {
+  const mockRepas = {
+    id: 'repas-123',
+    nom: 'Petit déjeuner',
+    date: new Date('2024-01-28'),
+    description: 'Mon petit déjeuner test',
+    utilisateur_id: 'user-123',
+    compositions: []
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('mettreAJour', () => {
+    it('devrait mettre à jour un repas avec succès', async () => {
+      const miseAJour = {
+        nom: 'Petit déjeuner modifié',
+        description: 'Description modifiée'
+      };
+
+      const repasModifie = { ...mockRepas, ...miseAJour };
+      mockPrisma.repas.update.mockResolvedValue(repasModifie);
+
+      const repas = await RepasModel.mettreAJour(mockRepas.id, mockRepas.utilisateur_id, miseAJour);
+
+      expect(mockPrisma.repas.update).toHaveBeenCalledWith({
+        where: {
+          id_utilisateur_id: {
+            id: mockRepas.id,
+            utilisateur_id: mockRepas.utilisateur_id
+          }
+        },
+        data: {
+          nom: miseAJour.nom,
+          description: miseAJour.description
+        },
+        include: {
+          compositions: {
+            include: {
+              produit: true
+            }
+          }
+        }
+      });
+
+      expect(repas).toEqual(repasModifie);
+    });
+
+    it('devrait mettre à jour uniquement les champs fournis', async () => {
+      const miseAJour = {
+        nom: 'Nouveau nom'
+      };
+
+      const repasModifie = { ...mockRepas, nom: miseAJour.nom };
+      mockPrisma.repas.update.mockResolvedValue(repasModifie);
+
+      const repas = await RepasModel.mettreAJour(mockRepas.id, mockRepas.utilisateur_id, miseAJour);
+
+      expect(mockPrisma.repas.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            nom: miseAJour.nom
+          }
+        })
+      );
+
+      expect(repas.nom).toBe(miseAJour.nom);
+      expect(repas.description).toBe(mockRepas.description);
+    });
+
+    it('devrait gérer la mise à jour de la date', async () => {
+      const nouvelleDate = new Date('2024-01-29');
+      const miseAJour = {
+        date: nouvelleDate
+      };
+
+      const repasModifie = { ...mockRepas, date: nouvelleDate };
+      mockPrisma.repas.update.mockResolvedValue(repasModifie);
+
+      await RepasModel.mettreAJour(mockRepas.id, mockRepas.utilisateur_id, miseAJour);
+
+      expect(mockPrisma.repas.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            date: nouvelleDate
+          }
+        })
+      );
+    });
+
+    it('devrait échouer si le repas n\'existe pas', async () => {
+      mockPrisma.repas.update.mockRejectedValue(new Error('Repas non trouvé'));
+
+      await expect(
+        RepasModel.mettreAJour('inexistant', mockRepas.utilisateur_id, { nom: 'Test' })
+      ).rejects.toThrow('Repas non trouvé');
+    });
+
+    it('devrait échouer pour un mauvais utilisateur', async () => {
+      mockPrisma.repas.update.mockRejectedValue(new Error('Non autorisé'));
+
+      await expect(
+        RepasModel.mettreAJour(mockRepas.id, 'mauvais-utilisateur', { nom: 'Test' })
+      ).rejects.toThrow('Non autorisé');
+    });
+  });
 }); 

@@ -1,17 +1,32 @@
+/**
+ * @jest-environment node
+ */
+
 const mockPrisma = require('../mocks/prisma.mock');
 const RepasModel = require('../../src/models/repas.model');
 
+// Injecter le mock Prisma
+RepasModel.setPrismaClient(mockPrisma);
+
 describe('RepasModel - Create', () => {
+  const mockDate = new Date('2024-01-28T00:00:00.000Z');
   const mockRepasData = {
     nom: 'Petit déjeuner',
-    date: new Date('2024-01-28'),
+    date: mockDate,
     description: 'Mon petit déjeuner test',
     utilisateur_id: 'user-123'
   };
 
   const mockCreatedRepas = {
     id: 'repas-123',
-    ...mockRepasData,
+    nom: mockRepasData.nom,
+    date: mockDate,
+    description: mockRepasData.description,
+    utilisateur_id: mockRepasData.utilisateur_id,
+    utilisateur: {
+      id: mockRepasData.utilisateur_id,
+      nom: 'Test User'
+    },
     compositions: []
   };
 
@@ -29,7 +44,7 @@ describe('RepasModel - Create', () => {
       expect(mockPrisma.repas.create).toHaveBeenCalledWith({
         data: {
           nom: mockRepasData.nom,
-          date: mockRepasData.date,
+          date: mockDate,
           description: mockRepasData.description,
           utilisateur: {
             connect: { id: mockRepasData.utilisateur_id }
@@ -58,10 +73,11 @@ describe('RepasModel - Create', () => {
 });
 
 describe('RepasModel - Read', () => {
+  const mockDate = new Date('2024-01-28T00:00:00.000Z');
   const mockRepas = {
     id: 'repas-123',
     nom: 'Petit déjeuner',
-    date: new Date('2024-01-28'),
+    date: mockDate,
     description: 'Mon petit déjeuner test',
     utilisateur_id: 'user-123',
     compositions: []
@@ -107,7 +123,7 @@ describe('RepasModel - Read', () => {
     const mockRepas2 = {
       id: 'repas-456',
       nom: 'Déjeuner',
-      date: new Date('2024-01-28'),
+      date: mockDate,
       utilisateur_id: 'user-123',
       compositions: []
     };
@@ -139,16 +155,15 @@ describe('RepasModel - Read', () => {
     });
 
     it('devrait filtrer les repas par date', async () => {
-      mockPrisma.repas.findMany.mockResolvedValue([mockRepas, mockRepas2]);
+      mockPrisma.repas.findMany.mockResolvedValue([mockRepas]);
 
-      const date = new Date('2024-01-28');
-      await RepasModel.lister('user-123', { date });
+      await RepasModel.lister('user-123', { date: mockDate });
 
       expect(mockPrisma.repas.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             utilisateur_id: 'user-123',
-            date: date
+            date: mockDate
           }
         })
       );
@@ -177,10 +192,11 @@ describe('RepasModel - Read', () => {
 });
 
 describe('RepasModel - Update', () => {
+  const mockDate = new Date('2024-01-28T00:00:00.000Z');
   const mockRepas = {
     id: 'repas-123',
     nom: 'Petit déjeuner',
-    date: new Date('2024-01-28'),
+    date: mockDate,
     description: 'Mon petit déjeuner test',
     utilisateur_id: 'user-123',
     compositions: []
@@ -248,7 +264,7 @@ describe('RepasModel - Update', () => {
     });
 
     it('devrait gérer la mise à jour de la date', async () => {
-      const nouvelleDate = new Date('2024-01-29');
+      const nouvelleDate = new Date('2024-01-29T00:00:00.000Z');
       const miseAJour = {
         date: nouvelleDate
       };
@@ -286,10 +302,11 @@ describe('RepasModel - Update', () => {
 });
 
 describe('RepasModel - Delete', () => {
+  const mockDate = new Date('2024-01-28T00:00:00.000Z');
   const mockRepas = {
     id: 'repas-123',
     nom: 'Petit déjeuner',
-    date: new Date('2024-01-28'),
+    date: mockDate,
     description: 'Mon petit déjeuner test',
     utilisateur_id: 'user-123',
     compositions: []

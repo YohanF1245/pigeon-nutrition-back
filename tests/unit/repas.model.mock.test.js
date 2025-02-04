@@ -283,4 +283,118 @@ describe('RepasModel - Update', () => {
       ).rejects.toThrow('Non autorisé');
     });
   });
+});
+
+describe('RepasModel - Delete', () => {
+  const mockRepas = {
+    id: 'repas-123',
+    nom: 'Petit déjeuner',
+    date: new Date('2024-01-28'),
+    description: 'Mon petit déjeuner test',
+    utilisateur_id: 'user-123',
+    compositions: []
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('supprimer', () => {
+    it('devrait supprimer un repas avec succès', async () => {
+      mockPrisma.repas.delete.mockResolvedValue(mockRepas);
+
+      const repas = await RepasModel.supprimer(mockRepas.id, mockRepas.utilisateur_id);
+
+      expect(mockPrisma.repas.delete).toHaveBeenCalledWith({
+        where: {
+          id_utilisateur_id: {
+            id: mockRepas.id,
+            utilisateur_id: mockRepas.utilisateur_id
+          }
+        }
+      });
+
+      expect(repas).toEqual(mockRepas);
+    });
+
+    it('devrait échouer si le repas n\'existe pas', async () => {
+      mockPrisma.repas.delete.mockRejectedValue(new Error('Repas non trouvé'));
+
+      await expect(
+        RepasModel.supprimer('inexistant', mockRepas.utilisateur_id)
+      ).rejects.toThrow('Repas non trouvé');
+    });
+
+    it('devrait échouer pour un mauvais utilisateur', async () => {
+      mockPrisma.repas.delete.mockRejectedValue(new Error('Non autorisé'));
+
+      await expect(
+        RepasModel.supprimer(mockRepas.id, 'mauvais-utilisateur')
+      ).rejects.toThrow('Non autorisé');
+    });
+  });
+
+  describe('supprimerProduit', () => {
+    const mockComposition = {
+      id: 'comp-123',
+      repas_id: 'repas-123',
+      produit_id: 'produit-123',
+      quantite: 2
+    };
+
+    it('devrait supprimer un produit du repas avec succès', async () => {
+      mockPrisma.repas.findFirst.mockResolvedValue(mockRepas);
+      mockPrisma.compositionRepas.delete.mockResolvedValue(mockComposition);
+
+      const resultat = await RepasModel.supprimerProduit(
+        mockRepas.id,
+        mockComposition.id,
+        mockRepas.utilisateur_id
+      );
+
+      expect(mockPrisma.repas.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: mockRepas.id,
+          utilisateur_id: mockRepas.utilisateur_id
+        },
+        include: {
+          compositions: {
+            include: {
+              produit: true
+            }
+          }
+        }
+      });
+
+      expect(mockPrisma.compositionRepas.delete).toHaveBeenCalledWith({
+        where: {
+          id: mockComposition.id
+        }
+      });
+
+      expect(resultat).toEqual(mockComposition);
+    });
+
+    it('devrait retourner null si le repas n\'existe pas', async () => {
+      mockPrisma.repas.findFirst.mockResolvedValue(null);
+
+      const resultat = await RepasModel.supprimerProduit(
+        'inexistant',
+        mockComposition.id,
+        mockRepas.utilisateur_id
+      );
+
+      expect(resultat).toBeNull();
+      expect(mockPrisma.compositionRepas.delete).not.toHaveBeenCalled();
+    });
+
+    it('devrait échouer si la composition n\'existe pas', async () => {
+      mockPrisma.repas.findFirst.mockResolvedValue(mockRepas);
+      mockPrisma.compositionRepas.delete.mockRejectedValue(new Error('Composition non trouvée'));
+
+      await expect(
+        RepasModel.supprimerProduit(mockRepas.id, 'inexistant', mockRepas.utilisateur_id)
+      ).rejects.toThrow('Composition non trouvée');
+    });
+  });
 }); 

@@ -414,4 +414,91 @@ describe('RepasModel - Delete', () => {
       ).rejects.toThrow('Composition non trouvée');
     });
   });
+});
+
+describe('RepasModel - Gestion des produits', () => {
+  const mockDate = new Date('2024-01-28T00:00:00.000Z');
+  const mockProduit = {
+    id: 'produit-123',
+    nom: 'Pain',
+    calories: 265,
+    matieres_grasses: 3.2,
+    glucides: 49,
+    proteines: 9,
+    sel: 0.6,
+    stock: 100,
+    prix_unitaire: 2.5,
+    stock_limite: 10,
+    unite_stock: 'UNITE'
+  };
+
+  const mockRepas = {
+    id: 'repas-123',
+    nom: 'Petit déjeuner',
+    date: mockDate,
+    description: 'Mon petit déjeuner test',
+    utilisateur_id: 'user-123',
+    compositions: []
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('ajouterProduit', () => {
+    const mockComposition = {
+      id: 'comp-123',
+      repas_id: mockRepas.id,
+      produit_id: mockProduit.id,
+      quantite: 2,
+      produit: mockProduit
+    };
+
+    it('devrait ajouter un produit au repas avec succès', async () => {
+      mockPrisma.compositionRepas.create.mockResolvedValue(mockComposition);
+
+      const composition = await RepasModel.ajouterProduit(mockRepas.id, mockProduit.id, 2);
+
+      expect(mockPrisma.compositionRepas.create).toHaveBeenCalledWith({
+        data: {
+          repas: {
+            connect: { id: mockRepas.id }
+          },
+          produit: {
+            connect: { id: mockProduit.id }
+          },
+          quantite: 2
+        },
+        include: {
+          produit: true
+        }
+      });
+
+      expect(composition).toEqual(mockComposition);
+    });
+
+    it('devrait échouer si le repas n\'existe pas', async () => {
+      mockPrisma.compositionRepas.create.mockRejectedValue(new Error('Repas non trouvé'));
+
+      await expect(
+        RepasModel.ajouterProduit('inexistant', mockProduit.id, 2)
+      ).rejects.toThrow('Repas non trouvé');
+    });
+
+    it('devrait échouer si le produit n\'existe pas', async () => {
+      mockPrisma.compositionRepas.create.mockRejectedValue(new Error('Produit non trouvé'));
+
+      await expect(
+        RepasModel.ajouterProduit(mockRepas.id, 'inexistant', 2)
+      ).rejects.toThrow('Produit non trouvé');
+    });
+
+    it('devrait échouer si la quantité est invalide', async () => {
+      mockPrisma.compositionRepas.create.mockRejectedValue(new Error('Quantité invalide'));
+
+      await expect(
+        RepasModel.ajouterProduit(mockRepas.id, mockProduit.id, -1)
+      ).rejects.toThrow('Quantité invalide');
+    });
+  });
 }); 

@@ -887,4 +887,115 @@ describe('RepasModel - Pagination et Filtrage', () => {
       expect(resultat[2].date).toEqual(new Date('2024-01-26'));
     });
   });
+});
+
+describe('RepasModel - Validation et Permissions', () => {
+  const mockDate = new Date('2024-01-28T00:00:00.000Z');
+  const mockUtilisateur = {
+    id: 'user-123',
+    email: 'test@test.com',
+    nom: 'Test',
+    prenom: 'User'
+  };
+
+  const mockRepas = {
+    id: 'repas-123',
+    nom: 'Petit déjeuner',
+    date: mockDate,
+    description: 'Description test',
+    utilisateur_id: mockUtilisateur.id,
+    compositions: []
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('validation des données', () => {
+    it('devrait valider le format de la date', async () => {
+      const repasData = {
+        nom: 'Test',
+        date: '2024-01-28T00:00:00.000Z',
+        utilisateur_id: mockUtilisateur.id
+      };
+
+      mockPrisma.repas.create.mockResolvedValue({
+        ...mockRepas,
+        date: new Date(repasData.date)
+      });
+
+      const repas = await RepasModel.creer(repasData);
+      expect(repas.date).toBeInstanceOf(Date);
+    });
+
+    it('devrait valider la longueur du nom', async () => {
+      const nomTropLong = 'a'.repeat(101);
+      
+      await expect(
+        RepasModel.creer({
+          nom: nomTropLong,
+          date: mockDate,
+          utilisateur_id: mockUtilisateur.id
+        })
+      ).rejects.toThrow();
+    });
+
+    it('devrait valider la longueur de la description', async () => {
+      const descriptionTropLongue = 'a'.repeat(501);
+      
+      await expect(
+        RepasModel.creer({
+          nom: 'Test',
+          date: mockDate,
+          description: descriptionTropLongue,
+          utilisateur_id: mockUtilisateur.id
+        })
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('gestion des permissions', () => {
+    it('devrait empêcher l\'accès aux repas d\'un autre utilisateur', async () => {
+      mockPrisma.repas.findFirst.mockResolvedValue(null);
+
+      const resultat = await RepasModel.trouverParId(
+        mockRepas.id,
+        'autre-utilisateur'
+      );
+
+      expect(resultat).toBeNull();
+    });
+
+    it('devrait empêcher la modification des repas d\'un autre utilisateur', async () => {
+      mockPrisma.repas.update.mockRejectedValue(new Error('Non autorisé'));
+
+      await expect(
+        RepasModel.mettreAJour(
+          mockRepas.id,
+          'autre-utilisateur',
+          { nom: 'Nouveau nom' }
+        )
+      ).rejects.toThrow('Non autorisé');
+    });
+
+    it('devrait empêcher la suppression des repas d\'un autre utilisateur', async () => {
+      mockPrisma.repas.delete.mockRejectedValue(new Error('Non autorisé'));
+
+      await expect(
+        RepasModel.supprimer(mockRepas.id, 'autre-utilisateur')
+      ).rejects.toThrow('Non autorisé');
+    });
+
+    it('devrait empêcher l\'ajout de produits aux repas d\'un autre utilisateur', async () => {
+      mockPrisma.repas.findFirst.mockResolvedValue(null);
+
+      const resultat = await RepasModel.supprimerProduit(
+        mockRepas.id,
+        'comp-123',
+        'autre-utilisateur'
+      );
+
+      expect(resultat).toBeNull();
+    });
+  });
 }); 

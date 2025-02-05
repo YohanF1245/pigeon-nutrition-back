@@ -637,4 +637,112 @@ describe('RepasModel - Calcul des nutriments', () => {
       });
     });
   });
+});
+
+describe('RepasModel - Gestion des erreurs', () => {
+  const mockDate = new Date('2024-01-28T00:00:00.000Z');
+  const mockRepas = {
+    id: 'repas-123',
+    utilisateur_id: 'user-123',
+    nom: 'Petit déjeuner',
+    date: mockDate,
+    compositions: []
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('gestion des erreurs de base de données', () => {
+    it('devrait gérer les erreurs de connexion', async () => {
+      const erreur = new Error('Erreur de connexion à la base de données');
+      mockPrisma.$connect.mockRejectedValue(erreur);
+
+      await expect(
+        RepasModel.creer({
+          nom: 'Test',
+          date: mockDate,
+          utilisateur_id: 'user-123'
+        })
+      ).rejects.toThrow('Erreur de connexion à la base de données');
+    });
+
+    it('devrait gérer les erreurs de transaction', async () => {
+      const erreur = new Error('Erreur de transaction');
+      mockPrisma.$executeRawUnsafe.mockRejectedValue(erreur);
+
+      await expect(
+        RepasModel.creer({
+          nom: 'Test',
+          date: mockDate,
+          utilisateur_id: 'user-123'
+        })
+      ).rejects.toThrow('Erreur de transaction');
+    });
+
+    it('devrait gérer les erreurs de contrainte unique', async () => {
+      const erreur = new Error('Unique constraint failed');
+      mockPrisma.repas.create.mockRejectedValue(erreur);
+
+      await expect(
+        RepasModel.creer({
+          nom: 'Test',
+          date: mockDate,
+          utilisateur_id: 'user-123'
+        })
+      ).rejects.toThrow('Unique constraint failed');
+    });
+  });
+
+  describe('gestion des cas limites', () => {
+    it('devrait gérer une date invalide', async () => {
+      await expect(
+        RepasModel.creer({
+          nom: 'Test',
+          date: 'date-invalide',
+          utilisateur_id: 'user-123'
+        })
+      ).rejects.toThrow();
+    });
+
+    it('devrait gérer un ID utilisateur invalide', async () => {
+      mockPrisma.repas.create.mockRejectedValue(new Error('Foreign key constraint failed'));
+
+      await expect(
+        RepasModel.creer({
+          nom: 'Test',
+          date: mockDate,
+          utilisateur_id: 'invalid-user'
+        })
+      ).rejects.toThrow('Foreign key constraint failed');
+    });
+
+    it('devrait gérer une quantité de produit invalide', async () => {
+      await expect(
+        RepasModel.ajouterProduit(mockRepas.id, 'produit-123', -1)
+      ).rejects.toThrow();
+
+      await expect(
+        RepasModel.ajouterProduit(mockRepas.id, 'produit-123', 0)
+      ).rejects.toThrow();
+    });
+
+    it('devrait gérer un repas sans date', async () => {
+      await expect(
+        RepasModel.creer({
+          nom: 'Test',
+          utilisateur_id: 'user-123'
+        })
+      ).rejects.toThrow();
+    });
+
+    it('devrait gérer un repas sans nom', async () => {
+      await expect(
+        RepasModel.creer({
+          date: mockDate,
+          utilisateur_id: 'user-123'
+        })
+      ).rejects.toThrow();
+    });
+  });
 }); 

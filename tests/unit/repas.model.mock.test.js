@@ -219,7 +219,9 @@ describe('RepasModel', () => {
       });
 
       it('devrait gérer les erreurs de transaction', async () => {
-        mockPrisma.$transaction.mockRejectedValue(new Error('Erreur de transaction'));
+        mockPrisma.$transaction.mockImplementation(() => {
+          throw new Error('Erreur de transaction');
+        });
 
         await expect(
           RepasModel.creer({
@@ -227,63 +229,63 @@ describe('RepasModel', () => {
             date: mockDate,
             utilisateur_id: 'user-123'
           })
-        ).rejects.toThrow();
-      });
-    });
-  });
-
-  describe('validation et permissions', () => {
-    describe('validation des données', () => {
-      it('devrait valider la longueur du nom', async () => {
-        mockPrisma.repas.create.mockRejectedValue(new Error('Le nom est trop long'));
-        const nomTropLong = 'a'.repeat(101);
-        
-        await expect(
-          RepasModel.creer({
-            nom: nomTropLong,
-            date: mockDate,
-            utilisateur_id: mockUtilisateur.id
-          })
-        ).rejects.toThrow();
-      });
-
-      it('devrait valider la longueur de la description', async () => {
-        mockPrisma.repas.create.mockRejectedValue(new Error('La description est trop longue'));
-        const descriptionTropLongue = 'a'.repeat(501);
-        
-        await expect(
-          RepasModel.creer({
-            nom: 'Test',
-            date: mockDate,
-            description: descriptionTropLongue,
-            utilisateur_id: mockUtilisateur.id
-          })
-        ).rejects.toThrow();
+        ).rejects.toThrow('Erreur de transaction');
       });
     });
 
-    describe('gestion des permissions', () => {
-      it('devrait empêcher l\'accès aux repas d\'un autre utilisateur', async () => {
-        mockPrisma.repas.findFirst.mockResolvedValue(null);
+    describe('validation et permissions', () => {
+      describe('validation des données', () => {
+        it('devrait valider la longueur du nom', async () => {
+          mockPrisma.repas.create.mockRejectedValue(new Error('Le nom est trop long'));
+          const nomTropLong = 'a'.repeat(101);
+          
+          await expect(
+            RepasModel.creer({
+              nom: nomTropLong,
+              date: mockDate,
+              utilisateur_id: mockUtilisateur.id
+            })
+          ).rejects.toThrow();
+        });
 
-        const resultat = await RepasModel.trouverParId(
-          mockRepas.id,
-          'autre-utilisateur'
-        );
-
-        expect(resultat).toBeNull();
+        it('devrait valider la longueur de la description', async () => {
+          mockPrisma.repas.create.mockRejectedValue(new Error('La description est trop longue'));
+          const descriptionTropLongue = 'a'.repeat(501);
+          
+          await expect(
+            RepasModel.creer({
+              nom: 'Test',
+              date: mockDate,
+              description: descriptionTropLongue,
+              utilisateur_id: mockUtilisateur.id
+            })
+          ).rejects.toThrow();
+        });
       });
 
-      it('devrait empêcher la modification des repas d\'un autre utilisateur', async () => {
-        mockPrisma.repas.update.mockRejectedValue(new Error('Non autorisé'));
+      describe('gestion des permissions', () => {
+        it('devrait empêcher l\'accès aux repas d\'un autre utilisateur', async () => {
+          mockPrisma.repas.findFirst.mockResolvedValue(null);
 
-        await expect(
-          RepasModel.mettreAJour(
+          const resultat = await RepasModel.trouverParId(
             mockRepas.id,
-            'autre-utilisateur',
-            { nom: 'Nouveau nom' }
-          )
-        ).rejects.toThrow();
+            'autre-utilisateur'
+          );
+
+          expect(resultat).toBeNull();
+        });
+
+        it('devrait empêcher la modification des repas d\'un autre utilisateur', async () => {
+          mockPrisma.repas.update.mockRejectedValue(new Error('Non autorisé'));
+
+          await expect(
+            RepasModel.mettreAJour(
+              mockRepas.id,
+              'autre-utilisateur',
+              { nom: 'Nouveau nom' }
+            )
+          ).rejects.toThrow();
+        });
       });
     });
   });

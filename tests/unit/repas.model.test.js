@@ -8,7 +8,9 @@ describe('RepasModel', () => {
   beforeAll(async () => {
     prisma = new PrismaClient();
     RepasModel.setPrismaClient(prisma);
+  });
 
+  beforeEach(async () => {
     // Créer un utilisateur de test
     utilisateurTest = await prisma.utilisateur.create({
       data: {
@@ -20,7 +22,7 @@ describe('RepasModel', () => {
     });
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     // Nettoyer les données de test
     await prisma.repas.deleteMany({
       where: { utilisateur_id: utilisateurTest.id }
@@ -28,14 +30,10 @@ describe('RepasModel', () => {
     await prisma.utilisateur.delete({
       where: { id: utilisateurTest.id }
     });
-    await prisma.$disconnect();
   });
 
-  beforeEach(async () => {
-    // Nettoyer les repas avant chaque test
-    await prisma.repas.deleteMany({
-      where: { utilisateur_id: utilisateurTest.id }
-    });
+  afterAll(async () => {
+    await prisma.$disconnect();
   });
 
   describe('creer', () => {

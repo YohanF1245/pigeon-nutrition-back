@@ -3,11 +3,17 @@ const RepasModel = require('../../src/models/repas.model');
 
 let prisma;
 let utilisateurTest;
+let repasTest;
+let produitTest;
 
 describe('RepasModel', () => {
   beforeAll(async () => {
     prisma = new PrismaClient();
     RepasModel.setPrismaClient(prisma);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
   });
 
   beforeEach(async () => {
@@ -20,33 +26,64 @@ describe('RepasModel', () => {
         prenom: 'User'
       }
     });
+
+    // Créer un repas de test
+    repasTest = await RepasModel.creer({
+      nom: 'Petit déjeuner',
+      date: new Date('2024-01-28'),
+      description: 'Mon petit déjeuner test',
+      utilisateur_id: utilisateurTest.id
+    });
+
+    // Créer un produit de test
+    produitTest = await prisma.produit.create({
+      data: {
+        nom: 'Pain',
+        calories: 265,
+        matieres_grasses: 3.2,
+        glucides: 49,
+        proteines: 9,
+        sel: 0.6,
+        stock: 100,
+        prix_unitaire: 2.5,
+        stock_limite: 10,
+        unite_stock: 'UNITE'
+      }
+    });
   });
 
   afterEach(async () => {
-    // Nettoyer les données de test
-    await prisma.repas.deleteMany({
-      where: { utilisateur_id: utilisateurTest.id }
-    });
-    await prisma.utilisateur.delete({
-      where: { id: utilisateurTest.id }
-    });
-  });
-
-  afterAll(async () => {
-    await prisma.$disconnect();
+    // Nettoyer les données de test dans l'ordre inverse
+    if (produitTest) {
+      await prisma.produit.deleteMany({
+        where: { id: produitTest.id }
+      });
+    }
+    
+    if (repasTest) {
+      await prisma.repas.deleteMany({
+        where: { utilisateur_id: utilisateurTest.id }
+      });
+    }
+    
+    if (utilisateurTest) {
+      await prisma.utilisateur.delete({
+        where: { id: utilisateurTest.id }
+      });
+    }
   });
 
   describe('creer', () => {
     it('devrait créer un nouveau repas avec succès', async () => {
       const repas = await RepasModel.creer({
-        nom: 'Petit déjeuner',
+        nom: 'Déjeuner',
         date: new Date('2024-01-28'),
-        description: 'Mon petit déjeuner test',
+        description: 'Mon déjeuner test',
         utilisateur_id: utilisateurTest.id
       });
 
       expect(repas).toBeDefined();
-      expect(repas.nom).toBe('Petit déjeuner');
+      expect(repas.nom).toBe('Déjeuner');
       expect(repas.utilisateur_id).toBe(utilisateurTest.id);
     });
 
@@ -63,17 +100,6 @@ describe('RepasModel', () => {
   });
 
   describe('trouverParId', () => {
-    let repasTest;
-
-    beforeEach(async () => {
-      repasTest = await RepasModel.creer({
-        nom: 'Petit déjeuner',
-        date: new Date('2024-01-28'),
-        description: 'Mon petit déjeuner test',
-        utilisateur_id: utilisateurTest.id
-      });
-    });
-
     it('devrait trouver un repas par son ID', async () => {
       const repas = await RepasModel.trouverParId(repasTest.id, utilisateurTest.id);
       expect(repas).toBeDefined();
@@ -93,13 +119,8 @@ describe('RepasModel', () => {
 
   describe('lister', () => {
     beforeEach(async () => {
-      // Créer quelques repas de test
+      // Créer quelques repas supplémentaires pour les tests de liste
       await Promise.all([
-        RepasModel.creer({
-          nom: 'Petit déjeuner',
-          date: new Date('2024-01-28'),
-          utilisateur_id: utilisateurTest.id
-        }),
         RepasModel.creer({
           nom: 'Déjeuner',
           date: new Date('2024-01-28'),
@@ -115,7 +136,7 @@ describe('RepasModel', () => {
 
     it('devrait lister tous les repas d\'un utilisateur', async () => {
       const repas = await RepasModel.lister(utilisateurTest.id);
-      expect(repas).toHaveLength(3);
+      expect(repas).toHaveLength(3); // Le repas de test + les 2 créés dans beforeEach
     });
 
     it('devrait filtrer les repas par date', async () => {
@@ -131,17 +152,6 @@ describe('RepasModel', () => {
   });
 
   describe('mettreAJour', () => {
-    let repasTest;
-
-    beforeEach(async () => {
-      repasTest = await RepasModel.creer({
-        nom: 'Petit déjeuner',
-        date: new Date('2024-01-28'),
-        description: 'Mon petit déjeuner test',
-        utilisateur_id: utilisateurTest.id
-      });
-    });
-
     it('devrait mettre à jour un repas avec succès', async () => {
       const repasModifie = await RepasModel.mettreAJour(
         repasTest.id,
@@ -185,17 +195,6 @@ describe('RepasModel', () => {
   });
 
   describe('supprimer', () => {
-    let repasTest;
-
-    beforeEach(async () => {
-      repasTest = await RepasModel.creer({
-        nom: 'Petit déjeuner',
-        date: new Date('2024-01-28'),
-        description: 'Mon petit déjeuner test',
-        utilisateur_id: utilisateurTest.id
-      });
-    });
-
     it('devrait supprimer un repas avec succès', async () => {
       await RepasModel.supprimer(repasTest.id, utilisateurTest.id);
       const repas = await RepasModel.trouverParId(repasTest.id, utilisateurTest.id);
@@ -215,70 +214,18 @@ describe('RepasModel', () => {
     });
 
     it('devrait supprimer les compositions associées', async () => {
-      // Créer un produit et l'ajouter au repas
-      const produit = await prisma.produit.create({
-        data: {
-          nom: 'Pain',
-          calories: 265,
-          matieres_grasses: 3.2,
-          glucides: 49,
-          proteines: 9,
-          sel: 0.6,
-          stock: 100,
-          prix_unitaire: 2.5,
-          stock_limite: 10,
-          unite_stock: 'UNITE'
-        }
-      });
+      await RepasModel.ajouterProduit(repasTest.id, produitTest.id, 2);
 
-      await RepasModel.ajouterProduit(repasTest.id, produit.id, 2);
-
-      // Supprimer le repas
       await RepasModel.supprimer(repasTest.id, utilisateurTest.id);
 
-      // Vérifier que les compositions ont été supprimées
       const compositions = await prisma.compositionRepas.findMany({
         where: { repas_id: repasTest.id }
       });
       expect(compositions).toHaveLength(0);
-
-      // Nettoyer le produit de test
-      await prisma.produit.delete({ where: { id: produit.id } });
     });
   });
 
   describe('gestion des produits', () => {
-    let repasTest;
-    let produitTest;
-
-    beforeEach(async () => {
-      repasTest = await RepasModel.creer({
-        nom: 'Petit déjeuner',
-        date: new Date('2024-01-28'),
-        description: 'Mon petit déjeuner test',
-        utilisateur_id: utilisateurTest.id
-      });
-
-      produitTest = await prisma.produit.create({
-        data: {
-          nom: 'Pain',
-          calories: 265,
-          matieres_grasses: 3.2,
-          glucides: 49,
-          proteines: 9,
-          sel: 0.6,
-          stock: 100,
-          prix_unitaire: 2.5,
-          stock_limite: 10,
-          unite_stock: 'UNITE'
-        }
-      });
-    });
-
-    afterEach(async () => {
-      await prisma.produit.delete({ where: { id: produitTest.id } });
-    });
-
     describe('ajouterProduit', () => {
       it('devrait ajouter un produit au repas', async () => {
         const composition = await RepasModel.ajouterProduit(repasTest.id, produitTest.id, 2);

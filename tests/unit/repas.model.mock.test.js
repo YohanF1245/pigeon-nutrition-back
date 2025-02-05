@@ -219,7 +219,7 @@ describe('RepasModel', () => {
       });
 
       it('devrait gérer les erreurs de transaction', async () => {
-        mockPrisma.$transaction.mockImplementation(() => {
+        mockPrisma.repas.create.mockImplementation(() => {
           throw new Error('Erreur de transaction');
         });
 

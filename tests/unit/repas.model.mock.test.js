@@ -501,4 +501,140 @@ describe('RepasModel - Gestion des produits', () => {
       ).rejects.toThrow('Quantité invalide');
     });
   });
+});
+
+describe('RepasModel - Calcul des nutriments', () => {
+  const mockDate = new Date('2024-01-28T00:00:00.000Z');
+  const mockProduit1 = {
+    id: 'produit-123',
+    nom: 'Pain',
+    calories: 265,
+    matieres_grasses: 3.2,
+    glucides: 49,
+    proteines: 9,
+    sel: 0.6,
+    unite_stock: 'UNITE'
+  };
+
+  const mockProduit2 = {
+    id: 'produit-456',
+    nom: 'Beurre',
+    calories: 717,
+    matieres_grasses: 81,
+    glucides: 0.1,
+    proteines: 0.8,
+    sel: 0.1,
+    unite_stock: 'UNITE'
+  };
+
+  const mockRepas = {
+    id: 'repas-123',
+    utilisateur_id: 'user-123',
+    nom: 'Petit déjeuner',
+    date: mockDate,
+    compositions: [
+      {
+        produit: mockProduit1,
+        quantite: 100 // 100g de pain
+      },
+      {
+        produit: mockProduit2,
+        quantite: 10 // 10g de beurre
+      }
+    ]
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('calculerNutriments', () => {
+    it('devrait calculer correctement les nutriments totaux', async () => {
+      mockPrisma.repas.findFirst.mockResolvedValue(mockRepas);
+
+      const nutriments = await RepasModel.calculerNutriments(mockRepas.id, mockRepas.utilisateur_id);
+
+      expect(mockPrisma.repas.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: mockRepas.id,
+          utilisateur_id: mockRepas.utilisateur_id
+        },
+        include: {
+          compositions: {
+            include: {
+              produit: true
+            }
+          }
+        }
+      });
+
+      // Vérification des calculs
+      // Pain: 100g = valeurs telles quelles
+      // Beurre: 10g = valeurs / 10
+      expect(nutriments).toEqual({
+        calories_total: 265 + 71.7,
+        matieres_grasses_total: 3.2 + 8.1,
+        glucides_total: 49 + 0.01,
+        proteines_total: 9 + 0.08,
+        sel_total: 0.6 + 0.01
+      });
+    });
+
+    it('devrait retourner null si le repas n\'existe pas', async () => {
+      mockPrisma.repas.findFirst.mockResolvedValue(null);
+
+      const nutriments = await RepasModel.calculerNutriments('inexistant', 'user-123');
+
+      expect(nutriments).toBeNull();
+    });
+
+    it('devrait calculer correctement pour un produit en tranches', async () => {
+      const mockProduitTranche = {
+        ...mockProduit1,
+        unite_stock: 'TRANCHE',
+        poids_par_tranche: 30 // 30g par tranche
+      };
+
+      const mockRepasAvecTranches = {
+        ...mockRepas,
+        compositions: [{
+          produit: mockProduitTranche,
+          quantite: 2 // 2 tranches
+        }]
+      };
+
+      mockPrisma.repas.findFirst.mockResolvedValue(mockRepasAvecTranches);
+
+      const nutriments = await RepasModel.calculerNutriments(mockRepas.id, mockRepas.utilisateur_id);
+
+      // 2 tranches de 30g = 60g
+      // 60g = 60% des valeurs nutritionnelles pour 100g
+      expect(nutriments).toEqual({
+        calories_total: 265 * 0.6,
+        matieres_grasses_total: 3.2 * 0.6,
+        glucides_total: 49 * 0.6,
+        proteines_total: 9 * 0.6,
+        sel_total: 0.6 * 0.6
+      });
+    });
+
+    it('devrait gérer un repas sans compositions', async () => {
+      const mockRepasVide = {
+        ...mockRepas,
+        compositions: []
+      };
+
+      mockPrisma.repas.findFirst.mockResolvedValue(mockRepasVide);
+
+      const nutriments = await RepasModel.calculerNutriments(mockRepas.id, mockRepas.utilisateur_id);
+
+      expect(nutriments).toEqual({
+        calories_total: 0,
+        matieres_grasses_total: 0,
+        glucides_total: 0,
+        proteines_total: 0,
+        sel_total: 0
+      });
+    });
+  });
 }); 

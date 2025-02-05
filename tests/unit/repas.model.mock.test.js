@@ -745,4 +745,146 @@ describe('RepasModel - Gestion des erreurs', () => {
       ).rejects.toThrow();
     });
   });
+});
+
+describe('RepasModel - Pagination et Filtrage', () => {
+  const mockDate = new Date('2024-01-28T00:00:00.000Z');
+  const mockRepas = [
+    {
+      id: 'repas-1',
+      nom: 'Petit déjeuner',
+      date: mockDate,
+      utilisateur_id: 'user-123',
+      compositions: []
+    },
+    {
+      id: 'repas-2',
+      nom: 'Déjeuner',
+      date: mockDate,
+      utilisateur_id: 'user-123',
+      compositions: []
+    },
+    {
+      id: 'repas-3',
+      nom: 'Dîner',
+      date: mockDate,
+      utilisateur_id: 'user-123',
+      compositions: []
+    }
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('pagination', () => {
+    it('devrait paginer les résultats correctement', async () => {
+      mockPrisma.repas.findMany.mockResolvedValue([mockRepas[0], mockRepas[1]]);
+
+      const resultat = await RepasModel.lister('user-123', { page: 1, limite: 2 });
+
+      expect(mockPrisma.repas.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 2,
+          skip: 0
+        })
+      );
+
+      expect(resultat).toHaveLength(2);
+      expect(resultat[0].id).toBe('repas-1');
+      expect(resultat[1].id).toBe('repas-2');
+    });
+
+    it('devrait gérer la dernière page', async () => {
+      mockPrisma.repas.findMany.mockResolvedValue([mockRepas[2]]);
+
+      const resultat = await RepasModel.lister('user-123', { page: 2, limite: 2 });
+
+      expect(mockPrisma.repas.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 2,
+          skip: 2
+        })
+      );
+
+      expect(resultat).toHaveLength(1);
+      expect(resultat[0].id).toBe('repas-3');
+    });
+
+    it('devrait retourner un tableau vide pour une page sans résultats', async () => {
+      mockPrisma.repas.findMany.mockResolvedValue([]);
+
+      const resultat = await RepasModel.lister('user-123', { page: 3, limite: 2 });
+
+      expect(mockPrisma.repas.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 2,
+          skip: 4
+        })
+      );
+
+      expect(resultat).toHaveLength(0);
+    });
+  });
+
+  describe('filtrage par date', () => {
+    it('devrait filtrer les repas par date', async () => {
+      mockPrisma.repas.findMany.mockResolvedValue([mockRepas[0]]);
+
+      const resultat = await RepasModel.lister('user-123', { date: mockDate });
+
+      expect(mockPrisma.repas.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            date: mockDate
+          })
+        })
+      );
+
+      expect(resultat).toHaveLength(1);
+      expect(resultat[0].date).toEqual(mockDate);
+    });
+
+    it('devrait retourner tous les repas si aucune date n\'est spécifiée', async () => {
+      mockPrisma.repas.findMany.mockResolvedValue(mockRepas);
+
+      const resultat = await RepasModel.lister('user-123', {});
+
+      expect(mockPrisma.repas.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.not.objectContaining({
+            date: expect.anything()
+          })
+        })
+      );
+
+      expect(resultat).toHaveLength(3);
+    });
+  });
+
+  describe('tri des résultats', () => {
+    it('devrait trier les repas par date décroissante', async () => {
+      const repasAvecDatesDifferentes = [
+        { ...mockRepas[0], date: new Date('2024-01-28') },
+        { ...mockRepas[1], date: new Date('2024-01-27') },
+        { ...mockRepas[2], date: new Date('2024-01-26') }
+      ];
+
+      mockPrisma.repas.findMany.mockResolvedValue(repasAvecDatesDifferentes);
+
+      const resultat = await RepasModel.lister('user-123');
+
+      expect(mockPrisma.repas.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: [
+            { date: 'desc' },
+            { date_creation: 'desc' }
+          ]
+        })
+      );
+
+      expect(resultat[0].date).toEqual(new Date('2024-01-28'));
+      expect(resultat[2].date).toEqual(new Date('2024-01-26'));
+    });
+  });
 }); 
